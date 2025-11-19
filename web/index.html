@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>very simple file uploader</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>very simple file uploader</h1>
+      <input type="file" id="fileInput" />
+      <input type="password" id="passwordInput" placeholder="Password" />
+      <button id="uploadButton">Upload</button>
+      <p id="statusText">No upload in progress</p>
+
+      <button id="openSettings">Settings ⚙️</button>
+
+      <dialog id="settings">
+        <details>
+          <summary>General</summary>
+          <input type="checkbox" name="Randomize file name" id="randomizeFilename" />
+          <label for="randomizeFilename">Randomize file name</label>
+        </details>
+
+        <details>
+          <summary>Video</summary>
+          <input type="checkbox" name="Make Discord friendly" id="makeDiscordFriendly" />
+          <label for="makeDiscordFriendly">Make Discord friendly</label>
+        </details>
+
+        <a id="closeSettings">❌</a>
+      </dialog>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/settings.ts"></script>
+  </body>
+</html>

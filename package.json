@@ -1,0 +1,12 @@
+{
+  "name": "simple-file-uploader",
+  "workspaces": [
+    "server",
+    "web",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.4",
+    "elysia": "^1.4.15"
+  }
+}
