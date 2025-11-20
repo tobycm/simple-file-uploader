@@ -54,3 +54,9 @@ a {
 a:visited {
   color: hsl(288, 100%, 70%);
 }
+
+footer {
+  width: 80%;
+  margin-top: 5rem;
+  text-align: center;
+}
