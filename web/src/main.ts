@@ -40,9 +40,10 @@ uploadButton.addEventListener("click", async () => {
         result.filename
       }" target="_blank" rel="noopener noreferrer">${import.meta.env.VITE_FILES_URL}/${result.filename}</a>`;
     } else {
-      statusText.textContent = "Upload failed.";
+      statusText.textContent = "Upload failed. Response content: " + (await response.text());
     }
   } catch (error) {
-    statusText.textContent = "An error occurred during upload.";
+    statusText.textContent = "An error occurred during upload. Error: " + error;
+    console.error("Upload error:", error);
   }
 });
