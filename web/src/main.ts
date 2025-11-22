@@ -44,6 +44,6 @@ uploadButton.addEventListener("click", async () => {
     }
   } catch (error) {
     statusText.textContent = "An error occurred during upload. Error: " + error;
-    console.error("Upload error:", error);
+    throw error;
   }
 });
