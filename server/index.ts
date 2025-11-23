@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia, t } from "elysia";
+import { appendFile } from "fs/promises";
 import path from "path";
 import { transcodeVideo } from "./transcode";
 
@@ -34,46 +35,51 @@ const app = new Elysia()
     "/upload",
     async ({ body, query }) => {
       if (!openMode) {
-        const password = query.password;
+        const password = body.password;
         if (!password || !allowedPasswords.includes(password)) {
           return new Response("Unauthorized", { status: 401 });
         }
       }
 
-      const file = body.file;
+      const upload = body.file;
 
-      let filename = file.name;
+      let filename = upload.name;
+      let filepath = path.join(uploadDir, filename);
 
-      if (query.randomizeFilename) {
-        const ext = filename.includes(".") ? filename.substring(filename.lastIndexOf(".")) : "";
-        filename = `${Bun.randomUUIDv7()}${ext}`;
+      console.log("Received file upload request with body:", { ...body, filename });
+
+      if (body.action === "single" || body.action === "append") {
+        await appendFile(filepath, await upload.bytes());
+
+        if (body.action === "append") {
+          return { status: "File appended successfully", filename };
+        }
       }
-
-      await Bun.write(path.join(uploadDir, filename), file);
 
       if (query.makeDiscordFriendly) {
         const outputPath = path.join(uploadDir, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
 
         await transcodeVideo({
-          inputPath: path.join(uploadDir, filename),
+          inputPath: filepath,
           outputPath: outputPath,
         });
 
-        await Bun.file(path.join(uploadDir, filename)).delete();
-
+        await Bun.file(filepath).delete();
         filename = path.basename(outputPath);
       }
 
-      console.log("Received file upload request with query:", { ...query, filename });
-      return { status: "File uploaded successfully", filename, url: `/files/${filename}` };
+      return { status: "File uploaded successfully", filename };
     },
     {
       query: t.Object({
-        password: t.Optional(t.String()),
-        randomizeFilename: t.Optional(t.Boolean()),
         makeDiscordFriendly: t.Optional(t.Boolean()),
       }),
-      body: t.Object({ file: t.File() }),
+      body: t.Object({
+        file: t.File(),
+        action: t.Union([t.Literal("single"), t.Literal("append"), t.Literal("done")], { default: "single" }),
+        password: t.Optional(t.String()),
+        makeDiscordFriendly: t.Optional(t.Boolean()),
+      }),
     }
   )
 
