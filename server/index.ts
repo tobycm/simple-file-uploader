@@ -48,6 +48,14 @@ const app = new Elysia()
 
       console.log("Received file upload request with body:", { ...body, filename });
 
+      if (body.action === "single" || body.action === "nuke") {
+        try {
+          await Bun.file(filepath).delete();
+        } catch (error) {
+          // Ignore error if file does not exist
+        }
+      }
+
       if (body.action === "single" || body.action === "append") {
         await appendFile(filepath, await upload.bytes());
 
@@ -76,7 +84,7 @@ const app = new Elysia()
       }),
       body: t.Object({
         file: t.File(),
-        action: t.Union([t.Literal("single"), t.Literal("append"), t.Literal("done")], { default: "single" }),
+        action: t.Union([t.Literal("single"), t.Literal("nuke"), t.Literal("append"), t.Literal("done")], { default: "single" }),
         password: t.Optional(t.String()),
         makeDiscordFriendly: t.Optional(t.Boolean()),
       }),

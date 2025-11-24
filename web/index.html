@@ -11,10 +11,13 @@
 <body>
   <div id="app">
     <h1>very simple file uploader</h1>
-    <input type="file" id="fileInput" />
+    <input type="file" multiple id="fileInput" />
     <input type="password" id="passwordInput" placeholder="Password" />
     <button id="uploadButton">Upload</button>
-    <p id="statusText">No upload in progress</p>
+    <div id="uploadStatuses">
+      <p id="statusText" hidden>No upload in progress</p>
+
+    </div>
 
     <button id="openSettings">Settings ⚙️</button>
 
