@@ -1,7 +1,8 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia, t } from "elysia";
-import { appendFile } from "fs/promises";
+import { appendFile, copyFile } from "fs/promises";
+import { tmpdir } from "os";
 import path from "path";
 import { transcodeVideo } from "./transcode";
 
@@ -47,6 +48,9 @@ const app = new Elysia()
 
       let filename = upload.name;
       let filepath = path.join(uploadDir, filename);
+      if (body.makeDiscordFriendly) {
+        filepath = path.join(tmpdir(), filename);
+      }
 
       console.log("Received file upload request with body:", { ...body, filename });
 
@@ -69,15 +73,19 @@ const app = new Elysia()
       }
 
       if (query.makeDiscordFriendly) {
+        const tmpPath = path.join(tmpdir(), filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
         const outputPath = path.join(uploadDir, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
 
         await transcodeVideo({
           inputPath: filepath,
-          outputPath,
+          outputPath: tmpPath,
           nvidiaHardwareAcceleration,
         });
 
+        await copyFile(tmpPath, outputPath);
+        await Bun.file(tmpPath).delete();
         await Bun.file(filepath).delete();
+
         filename = path.basename(outputPath);
       }
 
