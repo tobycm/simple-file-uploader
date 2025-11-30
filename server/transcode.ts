@@ -6,6 +6,11 @@ interface TranscodeOptions {
 }
 
 export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcceleration }: TranscodeOptions) {
+  const validVideo = await isValidVideo(inputPath);
+  if (!validVideo) {
+    throw new NotVideo(`The file at path "${inputPath}" is not a valid video file.`);
+  }
+
   const isHDR = await is10Bit(inputPath);
   console.log(`🎬 Video detected as: ${isHDR ? "HDR (10-bit)" : "SDR (8-bit)"}`);
 
@@ -97,4 +102,32 @@ async function is10Bit(inputPath: string): Promise<boolean> {
 
   // likely HDR (yuv420p10le)
   return output.trim().includes("10");
+}
+
+export class NotVideo extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotVideo";
+  }
+}
+
+async function isValidVideo(inputPath: string): Promise<boolean> {
+  const command = [
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0", // Select first video stream
+    "-show_entries",
+    "stream=codec_type",
+    "-of",
+    "csv=p=0", // Output simplified format
+    inputPath,
+  ];
+
+  const proc = Bun.spawn(command, { stdout: "pipe" });
+  const output = await new Response(proc.stdout).text();
+
+  // If ffprobe finds a video stream, it returns "video"
+  return output.trim() === "video";
 }

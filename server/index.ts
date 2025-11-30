@@ -4,7 +4,7 @@ import { Elysia, t } from "elysia";
 import { appendFile, copyFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
-import { transcodeVideo } from "./transcode";
+import { NotVideo, transcodeVideo } from "./transcode";
 
 const corsOrigin = process.env.CORS_ORIGIN || "*"; // Default to allow all origins
 
@@ -76,11 +76,23 @@ const app = new Elysia()
         const tmpPath = path.join(tmpdir(), filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
         const outputPath = path.join(uploadDir, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
 
-        await transcodeVideo({
-          inputPath: filepath,
-          outputPath: tmpPath,
-          nvidiaHardwareAcceleration,
-        });
+        try {
+          await transcodeVideo({
+            inputPath: filepath,
+            outputPath: tmpPath,
+            nvidiaHardwareAcceleration,
+          });
+        } catch (error) {
+          if (error instanceof NotVideo) {
+            await copyFile(filepath, outputPath);
+            await Bun.file(filepath).delete();
+
+            filename = path.basename(outputPath);
+            return { status: "File uploaded successfully", filename };
+          }
+
+          throw error;
+        }
 
         await copyFile(tmpPath, outputPath);
         await Bun.file(tmpPath).delete();
