@@ -56,6 +56,8 @@ const app = new Elysia()
         }
       }
 
+      if (body.action === "nuke") return { status: "File nuked successfully", filename };
+
       if (body.action === "single" || body.action === "append") {
         await appendFile(filepath, await upload.bytes());
 
