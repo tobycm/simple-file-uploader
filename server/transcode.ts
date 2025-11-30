@@ -6,6 +6,9 @@ interface TranscodeOptions {
 }
 
 export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcceleration }: TranscodeOptions) {
+  const isHDR = await is10Bit(inputPath);
+  console.log(`🎬 Video detected as: ${isHDR ? "HDR (10-bit)" : "SDR (8-bit)"}`);
+
   const command = [
     "ffmpeg",
     "-y", // Overwrite output files
@@ -42,15 +45,14 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "23", // Quality (lower is better, 23 is default)
         ]),
 
-    // A. Tone Mapping (HDR -> SDR conversion using 'hable' algorithm)
-    // B. Format Conversion (Output strictly yuv420p for compatibility)
     ...(nvidiaHardwareAcceleration
-      ? ["-vf", "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709"]
-      : [
-          // Fallback for CPU mode (standard pixel format)
-          "-pix_fmt",
-          "yuv420p",
-        ]),
+      ? [
+          "-vf",
+          isHDR
+            ? "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709" // The HDR Fix
+            : "scale_cuda=format=yuv420p", // The SDR "Safe Pass-through"
+        ]
+      : ["-pix_fmt", "yuv420p"]),
 
     "-c:a",
     "aac", // AAC audio
@@ -74,4 +76,25 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
   if (proc.exitCode !== 0) {
     throw new Error("FFmpeg failed");
   }
+}
+
+async function is10Bit(inputPath: string): Promise<boolean> {
+  const command = [
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=pix_fmt",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    inputPath,
+  ];
+
+  const proc = Bun.spawn(command, { stdout: "pipe" });
+  const output = await new Response(proc.stdout).text();
+
+  // likely HDR (yuv420p10le)
+  return output.trim().includes("10");
 }
