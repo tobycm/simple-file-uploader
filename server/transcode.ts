@@ -9,6 +9,11 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
   const command = [
     "ffmpeg",
     "-y", // Overwrite output files
+
+    // This MUST go before "-i".
+    // It tells FFmpeg to load the file directly into GPU memory.
+    ...(nvidiaHardwareAcceleration ? ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"] : []),
+
     "-i",
     inputPath,
 
@@ -26,6 +31,8 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           // so you might want 21 if quality matters more than space.
           "-b:v",
           "0", // Setting bitrate to 0 allows the driver to manage it based on CQ
+          "-multipass",
+          "qres", // Quality Rescaling Multipass
         ]
       : [
           "libx264", // Ensure widely supported H.264 video
@@ -35,8 +42,15 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "23", // Quality (lower is better, 23 is default)
         ]),
 
-    "-pix_fmt",
-    "yuv420p", // Ensure compatibility
+    // A. Tone Mapping (HDR -> SDR conversion using 'hable' algorithm)
+    // B. Format Conversion (Output strictly yuv420p for compatibility)
+    ...(nvidiaHardwareAcceleration
+      ? ["-vf", "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709"]
+      : [
+          // Fallback for CPU mode (standard pixel format)
+          "-pix_fmt",
+          "yuv420p",
+        ]),
 
     "-c:a",
     "aac", // AAC audio

@@ -6,6 +6,8 @@ To install dependencies:
 bun install
 ```
 
+Important: if you are using NVIDIA hardware acceleration, ensure you are using Jellyfin's FFmpeg build or another FFmpeg build compiled with NVIDIA support.
+
 To run:
 
 ```bash
