@@ -15,6 +15,8 @@ const allowedPasswords = process.env.ALLOWED_PASSWORDS ? process.env.ALLOWED_PAS
 
 const uploadDir = process.env.UPLOAD_DIR || "./uploads";
 
+const nvidiaHardwareAcceleration = process.env.NVIDIA_HARDWARE_ACCELERATION === "true";
+
 const app = new Elysia()
   .use(cors({ origin: corsOrigin }))
   .use(
@@ -71,7 +73,8 @@ const app = new Elysia()
 
         await transcodeVideo({
           inputPath: filepath,
-          outputPath: outputPath,
+          outputPath,
+          nvidiaHardwareAcceleration,
         });
 
         await Bun.file(filepath).delete();
