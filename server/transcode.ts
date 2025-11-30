@@ -26,7 +26,7 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "-rc",
           "vbr",
           "-cq",
-          "20", // Constant Quality: 19-21 is high quality, 23-26 is balanced.
+          "22", // Constant Quality: 19-21 is high quality, 23-26 is balanced.
           // Note: NVENC 23 looks slightly worse than x264 CRF 23,
           // so you might want 21 if quality matters more than space.
           "-b:v",
