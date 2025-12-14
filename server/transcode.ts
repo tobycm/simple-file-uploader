@@ -25,6 +25,9 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
     "-i",
     inputPath,
 
+    "-pix_fmt",
+    "yuv420p",
+
     "-c:v",
     ...(nvidiaHardwareAcceleration
       ? [
@@ -41,6 +44,11 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "0", // Setting bitrate to 0 allows the driver to manage it based on CQ
           "-multipass",
           "qres", // Quality Rescaling Multipass
+
+          "-vf",
+          isHDR
+            ? "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709" // The HDR Fix
+            : "scale_cuda=format=yuv420p", // The SDR "Safe Pass-through"
         ]
       : [
           "libx264", // Ensure widely supported H.264 video
@@ -49,15 +57,6 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "-crf",
           "23", // Quality (lower is better, 23 is default)
         ]),
-
-    ...(nvidiaHardwareAcceleration
-      ? [
-          "-vf",
-          isHDR
-            ? "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709" // The HDR Fix
-            : "scale_cuda=format=yuv420p", // The SDR "Safe Pass-through"
-        ]
-      : ["-pix_fmt", "yuv420p"]),
 
     "-c:a",
     "aac", // AAC audio
