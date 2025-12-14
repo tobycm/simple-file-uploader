@@ -2,6 +2,8 @@ import "@fontsource/ubuntu/400.css";
 import "@fontsource/ubuntu/500.css";
 import "@fontsource/ubuntu/700.css";
 
+import type { TFile } from "./app";
+import app from "./app";
 import "./style.css";
 
 const fileInput = document.getElementById("fileInput") as HTMLInputElement;
@@ -88,10 +90,12 @@ uploadButton.addEventListener("click", async () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const result: TFile = await response.json();
         statusText.innerHTML = `Upload successful! File URL: <a href="${import.meta.env.VITE_FILES_URL}/${
           result.filename
         }" target="_blank" rel="noopener noreferrer">${import.meta.env.VITE_FILES_URL}/${result.filename}</a>`;
+
+        app.uploadedFiles.push(result);
       } else {
         statusText.textContent = "Upload failed. Response content: " + (await response.text());
       }
@@ -99,5 +103,20 @@ uploadButton.addEventListener("click", async () => {
       statusText.textContent = "An error occurred during upload. Error: " + error;
       throw error;
     }
+  }
+});
+
+const copyAllButton = document.getElementById("copyAll") as HTMLButtonElement;
+
+copyAllButton.addEventListener("click", async () => {
+  if (app.uploadedFiles.length === 0) return;
+
+  const allUrls = app.uploadedFiles.map((file) => `${import.meta.env.VITE_FILES_URL}/${file.filename}`).join("\n");
+
+  try {
+    await navigator.clipboard.writeText(allUrls);
+    alert("All file URLs copied to clipboard!");
+  } catch (error) {
+    alert("Failed to copy to clipboard: " + (error as Error).message);
   }
 });
