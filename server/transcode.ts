@@ -45,11 +45,6 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "-multipass",
           "qres", // Quality Rescaling Multipass
 
-          "-profile:v",
-          "high",
-          "-level",
-          "4.0",
-
           "-vf",
           isHDR
             ? "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709" // The HDR Fix
