@@ -84,7 +84,9 @@ const app = new Elysia()
           });
         } catch (error) {
           if (error instanceof NotVideo) {
-            await copyFile(filepath, outputPath);
+            console.log(`File ${filename} is not a video, skipping transcoding.`);
+
+            await copyFile(filepath, path.join(uploadDir, filename));
             await Bun.file(filepath).delete();
 
             filename = path.basename(outputPath);
