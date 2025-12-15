@@ -21,6 +21,12 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
   console.log(`🎬 Video detected as: ${videoInfo.is10Bit ? "HDR (10-bit)" : "SDR (8-bit)"}`);
   console.log(`📊 Resolution: ${videoInfo.width}x${videoInfo.height} @ ${videoInfo.fps.toFixed(2)} fps`);
 
+  // Discord doesn't support 60fps videos from NVENC, cap at 30fps for compatibility
+  const targetFps = videoInfo.fps > 30 ? 30 : videoInfo.fps;
+  if (targetFps < videoInfo.fps) {
+    console.log(`⚠️  Capping frame rate to ${targetFps}fps for Discord compatibility`);
+  }
+
   const command = [
     "ffmpeg",
     "-y",
@@ -44,6 +50,8 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "qres",
           "-profile:v",
           "main",
+          "-r",
+          targetFps.toString(), // Cap frame rate for Discord compatibility
           "-vf",
           videoInfo.is10Bit
             ? "tonemap_cuda=format=yuv420p:tonemap=hable:primaries=bt709:transfer=bt709:matrix=bt709,scale_cuda='trunc(iw/16)*16':'trunc(ih/16)*16'"
@@ -58,8 +66,8 @@ export async function transcodeVideo({ inputPath, outputPath, nvidiaHardwareAcce
           "fast",
           "-crf",
           "23",
+          ...(targetFps < videoInfo.fps ? ["-r", targetFps.toString()] : []),
         ]),
-
     "-c:a",
     "aac",
     "-b:a",
