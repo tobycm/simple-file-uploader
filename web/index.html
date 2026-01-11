@@ -14,15 +14,18 @@
     <h1>very simple file uploader</h1>
     <input type="file" multiple id="fileInput" />
     <input type="password" id="passwordInput" placeholder="Password" />
-    <button id="uploadButton">Upload</button>
+    <div>
+      <button id="uploadButton">Upload</button>
+      <button id="openSettings">Settings ⚙️</button>
+      <button id="copyAll">Copy all links</button>
+    </div>
+
+
     <div id="uploadStatuses">
       <p id="statusText" hidden>No upload in progress</p>
 
     </div>
 
-    <button id="copyAll">Copy all links</button>
-
-    <button id="openSettings">Settings ⚙️</button>
 
     <dialog id="settings">
       <details>
@@ -33,8 +36,8 @@
 
       <details>
         <summary>Video</summary>
-        <input type="checkbox" name="Make Discord friendly" id="makeDiscordFriendly" />
-        <label for="makeDiscordFriendly">Make Discord friendly</label>
+        <input type="checkbox" name="Make Discord friendly" id="transcode" />
+        <label for="transcode">Make Discord friendly</label>
       </details>
 
       <a id="closeSettings">❌</a>
@@ -54,6 +57,7 @@
   <script type="module" src="/src/main.ts"></script>
   <script type="module" src="/src/settings.ts"></script>
   <script type="module" src="/src/onload.ts"></script>
+  <script type="module" src="/src/copyall.ts"></script>
 </body>
 
 </html>

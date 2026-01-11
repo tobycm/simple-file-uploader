@@ -19,9 +19,9 @@ randomizeFilename.addEventListener("change", (event) => {
   app.settings.randomizeFilename = target.checked;
 });
 
-const makeDiscordFriendly = document.getElementById("makeDiscordFriendly") as HTMLInputElement;
-makeDiscordFriendly.addEventListener("change", (event) => {
+const transcode = document.getElementById("transcode") as HTMLInputElement;
+transcode.addEventListener("change", (event) => {
   const target = event.target as HTMLInputElement;
 
-  app.settings.makeDiscordFriendly = target.checked;
+  app.settings.transcode = target.checked;
 });

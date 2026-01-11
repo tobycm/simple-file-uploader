@@ -5,6 +5,7 @@ import { appendFile, copyFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { NotVideo, transcodeVideo } from "./transcode";
+import { ExpiringMap, type TranscodeJob } from "./utils";
 
 const corsOrigin = process.env.CORS_ORIGIN || "*"; // Default to allow all origins
 
@@ -17,6 +18,8 @@ const allowedPasswords = process.env.ALLOWED_PASSWORDS ? process.env.ALLOWED_PAS
 const uploadDir = process.env.UPLOAD_DIR || "./uploads";
 
 const nvidiaHardwareAcceleration = process.env.NVIDIA_HARDWARE_ACCELERATION === "true";
+
+const jobs = new ExpiringMap<string, TranscodeJob>(60 * 60 * 1000); // 1 hour TTL
 
 const app = new Elysia()
   .use(cors({ origin: corsOrigin }))
@@ -34,21 +37,41 @@ const app = new Elysia()
   .get("/", () => "Hello Elysia and Simple File Uploader!")
   .get("/favicon.ico", () => Bun.file("./assets/favicon.ico"))
 
+  .get(
+    "/job/:id",
+    ({ params, status }) => {
+      const job = jobs.get(params.id);
+      if (!job) throw status(404, "Job not found");
+
+      return job;
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  .guard({
+    beforeHandle({ body, status }) {
+      if (openMode) return;
+
+      // Check password
+      const password = (body as any)?.password;
+      if (!password || !allowedPasswords.includes(password)) {
+        throw status(401, "Unauthorized");
+      }
+    },
+  })
+
   .post(
     "/upload",
     async ({ body, query }) => {
-      if (!openMode) {
-        const password = body.password;
-        if (!password || !allowedPasswords.includes(password)) {
-          return new Response("Unauthorized", { status: 401 });
-        }
-      }
-
       const upload = body.file;
 
       let filename = upload.name;
       let filepath = path.join(uploadDir, filename);
-      if (body.makeDiscordFriendly) {
+      if (body.transcode) {
         filepath = path.join(tmpdir(), filename);
       }
 
@@ -72,48 +95,56 @@ const app = new Elysia()
         }
       }
 
-      if (query.makeDiscordFriendly) {
+      if (query.transcode) {
         const tmpPath = path.join(tmpdir(), filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
         const outputPath = path.join(uploadDir, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
 
-        try {
-          await transcodeVideo({
-            inputPath: filepath,
-            outputPath: tmpPath,
-            nvidiaHardwareAcceleration,
+        const jobId = Bun.randomUUIDv7();
+
+        jobs.set(jobId, { status: "transcoding" });
+        console.log(`Starting transcoding for file ${filename}, job ID: ${jobId}`);
+
+        transcodeVideo({
+          inputPath: filepath,
+          outputPath: tmpPath,
+          nvidiaHardwareAcceleration,
+        })
+          .then(async () => {
+            await copyFile(tmpPath, outputPath);
+
+            jobs.set(jobId, { status: "completed", filename: path.basename(outputPath) });
+            console.log(`Transcoding completed for file ${filename}, job ID: ${jobId}`);
+          })
+
+          .catch(async (error) => {
+            if (error instanceof NotVideo) {
+              await copyFile(filepath, path.join(uploadDir, filename));
+            }
+
+            console.error("Transcoding error:", error);
+            jobs.set(jobId, { status: "error", errorMessage: (error as Error).message });
+          })
+
+          .finally(() => {
+            Bun.file(tmpPath).delete();
+            Bun.file(filepath).delete();
           });
-        } catch (error) {
-          if (error instanceof NotVideo) {
-            console.log(`File ${filename} is not a video, skipping transcoding.`);
 
-            await copyFile(filepath, path.join(uploadDir, filename));
-            await Bun.file(filepath).delete();
-
-            filename = path.basename(outputPath);
-            return { status: "File uploaded successfully", filename };
-          }
-
-          throw error;
-        }
-
-        await copyFile(tmpPath, outputPath);
-        await Bun.file(tmpPath).delete();
-        await Bun.file(filepath).delete();
-
-        filename = path.basename(outputPath);
+        return { status: "Transcoding started", jobId };
       }
 
       return { status: "File uploaded successfully", filename };
     },
     {
       query: t.Object({
-        makeDiscordFriendly: t.Optional(t.Boolean()),
+        transcode: t.Optional(t.Boolean()),
       }),
       body: t.Object({
         file: t.File(),
         action: t.Union([t.Literal("single"), t.Literal("nuke"), t.Literal("append"), t.Literal("done")], { default: "single" }),
         password: t.Optional(t.String()),
-        makeDiscordFriendly: t.Optional(t.Boolean()),
+        transcode: t.Optional(t.Boolean()),
+        folderPath: t.Optional(t.String()),
       }),
     }
   )
