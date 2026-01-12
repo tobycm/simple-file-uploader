@@ -1,11 +1,11 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia, t } from "elysia";
-import { appendFile, copyFile } from "fs/promises";
+import { appendFile, copyFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { NotVideo, transcodeVideo } from "./transcode";
-import { ExpiringMap, type TranscodeJob } from "./utils";
+import { ExpiringMap, getSafePath, type TranscodeJob } from "./utils";
 
 const corsOrigin = process.env.CORS_ORIGIN || "*"; // Default to allow all origins
 
@@ -15,7 +15,7 @@ if (openMode) console.warn("Warning: The server is running in open mode. No pass
 
 const allowedPasswords = process.env.ALLOWED_PASSWORDS ? process.env.ALLOWED_PASSWORDS.split(",").map((pw) => pw.trim()) : [];
 
-const uploadDir = process.env.UPLOAD_DIR || "./uploads";
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
 
 const nvidiaHardwareAcceleration = process.env.NVIDIA_HARDWARE_ACCELERATION === "true";
 
@@ -41,7 +41,7 @@ const app = new Elysia()
     "/job/:id",
     ({ params, status }) => {
       const job = jobs.get(params.id);
-      if (!job) throw status(404, "Job not found");
+      if (!job) return status(404, "Job not found");
 
       return job;
     },
@@ -59,18 +59,25 @@ const app = new Elysia()
       // Check password
       const password = (body as any)?.password;
       if (!password || !allowedPasswords.includes(password)) {
-        throw status(401, "Unauthorized");
+        return status(401, "Unauthorized");
       }
     },
   })
 
   .post(
     "/upload",
-    async ({ body, query }) => {
+    async ({ body, query, status }) => {
       const upload = body.file;
 
+      const folder = body.folder ?? "";
+
+      const safeFolder = getSafePath(folder, uploadDir);
+      if (safeFolder === false) return status(400, "Invalid folder path");
+
+      await mkdir(safeFolder, { recursive: true });
+
       let filename = upload.name;
-      let filepath = path.join(uploadDir, filename);
+      let filepath = path.join(safeFolder, filename);
       if (body.transcode) {
         filepath = path.join(tmpdir(), filename);
       }
@@ -97,7 +104,7 @@ const app = new Elysia()
 
       if (query.transcode) {
         const tmpPath = path.join(tmpdir(), filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
-        const outputPath = path.join(uploadDir, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
+        const outputPath = path.join(safeFolder, filename.split(".").slice(0, -1).join(".") + "_nice.mp4");
 
         const jobId = Bun.randomUUIDv7();
 
@@ -118,7 +125,7 @@ const app = new Elysia()
 
           .catch(async (error) => {
             if (error instanceof NotVideo) {
-              await copyFile(filepath, path.join(uploadDir, filename));
+              await copyFile(filepath, path.join(safeFolder, filename));
             }
 
             console.error("Transcoding error:", error);
@@ -144,7 +151,7 @@ const app = new Elysia()
         action: t.Union([t.Literal("single"), t.Literal("nuke"), t.Literal("append"), t.Literal("done")], { default: "single" }),
         password: t.Optional(t.String()),
         transcode: t.Optional(t.Boolean()),
-        folderPath: t.Optional(t.String()),
+        folder: t.Optional(t.String()),
       }),
     }
   )

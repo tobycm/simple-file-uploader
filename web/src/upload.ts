@@ -6,15 +6,13 @@ interface UploadOptions {
 
   password: string;
 
-  randomizeFilename: boolean;
-  transcode: boolean;
-
   textElement?: HTMLElement;
   parentElement?: HTMLElement;
 }
 
 export async function uploadFiles(options: UploadOptions) {
-  const { files, password, randomizeFilename, transcode, textElement, parentElement } = options;
+  const { files, password, textElement, parentElement } = options;
+  const { randomizeFilename, transcode, folder } = app.settings;
 
   for (let file of files) {
     const updateStatus =
@@ -32,12 +30,15 @@ export async function uploadFiles(options: UploadOptions) {
 
     const formData = new FormData();
     formData.set("password", password);
+    if (folder) {
+      formData.set("folder", folder);
+    }
 
     updateStatus(`<code>${file.name}</code> Uploading...`);
 
     const url = new URL("/upload", import.meta.env.VITE_API_URL);
 
-    url.searchParams.set("transcode", String(transcode));
+    if (transcode) url.searchParams.set("transcode", "true");
 
     formData.set("action", "nuke");
     formData.set("file", new File(["a"], file.name, { type: file.type }));

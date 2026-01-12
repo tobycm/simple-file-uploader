@@ -12,6 +12,9 @@ export function getSafePath(userInput: string, allowedRoot: string): string | fa
   // e.g. /root/media + ../../etc/passwd -> /etc/passwd
   const resolvedPath = path.resolve(allowedRoot, userInput);
 
+  console.log("Resolved Path:", resolvedPath);
+  console.log("Allowed Root:", allowedRoot);
+
   // 2. Critical Security Check:
   // Ensure the resolved path starts with the allowed root.
   // We add 'path.sep' to prevent partial matches (e.g., preventing "/var/www-secret" when root is "/var/www")

@@ -19,6 +19,13 @@ randomizeFilename.addEventListener("change", (event) => {
   app.settings.randomizeFilename = target.checked;
 });
 
+const folder = document.getElementById("folder") as HTMLInputElement;
+folder.addEventListener("change", (event) => {
+  const target = event.target as HTMLInputElement;
+
+  app.settings.folder = target.value;
+});
+
 const transcode = document.getElementById("transcode") as HTMLInputElement;
 transcode.addEventListener("change", (event) => {
   const target = event.target as HTMLInputElement;

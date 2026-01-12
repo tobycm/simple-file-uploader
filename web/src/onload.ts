@@ -20,3 +20,24 @@ passwordInput.addEventListener("input", () => {
 
   window.history.replaceState({}, "", newUrl);
 });
+
+const folder = urlParams.get("folder");
+
+const folderInput = document.getElementById("folder") as HTMLInputElement;
+
+if (folder) {
+  folderInput.value = folder;
+}
+
+folderInput.addEventListener("input", () => {
+  const params = new URLSearchParams(window.location.search);
+  if (folderInput.value) {
+    params.set("folder", folderInput.value);
+  } else {
+    params.delete("folder");
+  }
+  const newUrl =
+    window.location.protocol + "//" + window.location.host + window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+
+  window.history.replaceState({}, "", newUrl);
+});
