@@ -24,6 +24,10 @@ body {
   gap: 1rem;
 }
 
+#passwordWarning {
+  font-size: small;
+}
+
 #settings {
   margin: auto;
 }

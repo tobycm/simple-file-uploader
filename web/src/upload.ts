@@ -50,7 +50,7 @@ export async function uploadFiles(options: UploadOptions) {
 
       if (!response.ok) {
         updateStatus(`<code>${file.name}</code> Upload initialization failed. Response content: ` + (await response.text()));
-        throw new Error("Upload initialization failed");
+        return;
       }
     } catch (error) {
       updateStatus(`<code>${file.name}</code> An error occurred during upload initialization. Error: ` + (error as Error).message);
@@ -78,7 +78,7 @@ export async function uploadFiles(options: UploadOptions) {
 
         if (!response.ok) {
           updateStatus(`<code>${file.name}</code> Upload failed. Response content: ` + (await response.text()));
-          throw new Error("Upload failed");
+          return;
         }
       } catch (error) {
         updateStatus(`<code>${file.name}</code> An error occurred during upload. Error: ` + (error as Error).message);
@@ -97,7 +97,7 @@ export async function uploadFiles(options: UploadOptions) {
 
       if (!response.ok) {
         updateStatus(`<code>${file.name}</code> Finalizing upload failed. Response content: ` + (await response.text()));
-        throw new Error("Finalizing upload failed");
+        return;
       }
 
       const result: TFile = await response.json();
@@ -107,7 +107,7 @@ export async function uploadFiles(options: UploadOptions) {
       updateStatus(
         `<code>${file.name}</code> Upload completed. File URL: <a href="${import.meta.env.VITE_FILES_URL}/${
           result.filename
-        }" target="_blank" rel="noopener noreferrer">File URL</a>`
+        }" target="_blank" rel="noopener noreferrer">File URL</a>`,
       );
       if (result.jobId) {
         updateStatus(`<code>${file.name}</code> Transcoding in progress... (Job ID: ${result.jobId})`);
@@ -116,7 +116,7 @@ export async function uploadFiles(options: UploadOptions) {
         updateStatus(
           `<code>${file.name}</code> Upload and transcoding completed. File URL: <a href="${import.meta.env.VITE_FILES_URL}/${
             result.filename
-          }" target="_blank" rel="noopener noreferrer">File URL</a>`
+          }" target="_blank" rel="noopener noreferrer">File URL</a>`,
         );
       }
 
@@ -137,7 +137,7 @@ async function pollTranscodeJob(jobId: string, fileName: string, updateStatus: (
 
       if (!response.ok) {
         updateStatus(`${fileName} Failed to get transcoding status. Response content: ` + (await response.text()));
-        throw new Error("Failed to get transcoding status");
+        return;
       }
 
       const result: TTranscodeJob = await response.json();
@@ -148,7 +148,7 @@ async function pollTranscodeJob(jobId: string, fileName: string, updateStatus: (
       }
       if (result.status === "error") {
         updateStatus(`${fileName} Transcoding failed. Error: ` + result.errorMessage);
-        throw new Error("Transcoding failed: " + result.errorMessage);
+        return;
       }
 
       updateStatus(`${fileName} Transcoding in progress... (Job ID: ${jobId})`);

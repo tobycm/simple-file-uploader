@@ -3,9 +3,11 @@ const urlParams = new URLSearchParams(window.location.search);
 const password = urlParams.get("password");
 
 const passwordInput = document.getElementById("passwordInput") as HTMLInputElement;
+const passwordWarning = document.getElementById("passwordWarning") as HTMLSpanElement;
 
 if (password) {
   passwordInput.value = password;
+  passwordWarning.textContent = "Prefilled from URL. Don't change unless you know what you are doing.";
 }
 
 passwordInput.addEventListener("input", () => {

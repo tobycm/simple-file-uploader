@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
@@ -16,19 +16,20 @@
   <div id="app">
     <h1>very simple file uploader</h1>
     <input type="file" multiple id="fileInput" />
-    <input type="password" id="passwordInput" placeholder="Password" />
+    <div>
+      <label for="passwordInput">Password:&nbsp;</label>
+      <input type="password" id="passwordInput" placeholder="Password" />
+      <span id="passwordWarning">Don't change unless you know what you are doing.</span>
+    </div>
     <div>
       <button id="uploadButton">Upload</button>
       <button id="openSettings">Settings ⚙️</button>
       <button id="copyAll">Copy all links</button>
     </div>
 
-
     <div id="uploadStatuses">
       <p id="statusText" hidden>No upload in progress</p>
-
     </div>
-
 
     <dialog id="settings">
       <details>
@@ -42,7 +43,6 @@
           <label for="folder">Folder:</label>
           <input type="text" name="Folder" id="folder" />
         </div>
-
       </details>
 
       <details>
@@ -57,13 +57,11 @@
       <hr />
 
       <small>
-        made by <a href="https://github.com/tobycm">tobycm</a> with &hearts;
-        &bullet; repo: <a href="https://github.com/tobycm/simple-file-uploader">tobycm/simple-file-uploader</a>
+        made by <a href="https://github.com/tobycm">tobycm</a> with &hearts; &bullet; repo:
+        <a href="https://github.com/tobycm/simple-file-uploader">tobycm/simple-file-uploader</a>
       </small>
     </footer>
   </div>
-
-
 
   <script type="module" src="/src/main.ts"></script>
   <script type="module" src="/src/settings.ts"></script>
