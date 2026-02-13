@@ -8,5 +8,8 @@
   "dependencies": {
     "@elysiajs/eden": "^1.4.4",
     "elysia": "^1.4.15"
+  },
+  "scripts": {
+    "cloudflare-special-treatment": "cd web && bun run build"
   }
 }
