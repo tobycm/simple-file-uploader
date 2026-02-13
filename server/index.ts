@@ -32,7 +32,7 @@ const app = new Elysia()
           version: "1.0.0",
         },
       },
-    })
+    }),
   )
   .get("/", () => "Hello Elysia and Simple File Uploader!")
   .get("/favicon.ico", () => Bun.file("./assets/favicon.ico"))
@@ -49,7 +49,7 @@ const app = new Elysia()
       params: t.Object({
         id: t.String(),
       }),
-    }
+    },
   )
 
   .guard({
@@ -78,7 +78,7 @@ const app = new Elysia()
 
       let filename = upload.name;
       let filepath = path.join(safeFolder, filename);
-      if (body.transcode) {
+      if (query.transcode) {
         filepath = path.join(tmpdir(), filename);
       }
 
@@ -150,10 +150,9 @@ const app = new Elysia()
         file: t.File(),
         action: t.Union([t.Literal("single"), t.Literal("nuke"), t.Literal("append"), t.Literal("done")], { default: "single" }),
         password: t.Optional(t.String()),
-        transcode: t.Optional(t.Boolean()),
         folder: t.Optional(t.String()),
       }),
-    }
+    },
   )
 
   .listen(3461);

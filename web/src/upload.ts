@@ -1,5 +1,10 @@
-import type { TFile, TTranscodeJob } from "./app";
 import app from "./app";
+
+import { treaty } from "@elysiajs/eden";
+import type { SFUAPI } from "../../server/index";
+import { a, joinUrl } from "./utils";
+
+const api = treaty<SFUAPI>(import.meta.env.VITE_API_URL || "http://localhost:3461");
 
 interface UploadOptions {
   files: File[] | FileList;
@@ -28,28 +33,31 @@ export async function uploadFiles(options: UploadOptions) {
       file = new File([file], randomFilename, { type: file.type });
     }
 
-    const formData = new FormData();
-    formData.set("password", password);
-    if (folder) {
-      formData.set("folder", folder);
-    }
-
     updateStatus(`<code>${file.name}</code> Uploading...`);
 
-    const url = new URL("/upload", import.meta.env.VITE_API_URL);
-
-    if (transcode) url.searchParams.set("transcode", "true");
-
-    formData.set("action", "nuke");
-    formData.set("file", new File(["a"], file.name, { type: file.type }));
     try {
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        body: formData,
-      });
+      const response = await api.upload.post(
+        {
+          password,
+          folder,
 
-      if (!response.ok) {
-        updateStatus(`<code>${file.name}</code> Upload initialization failed. Response content: ` + (await response.text()));
+          action: "nuke",
+          file: new File(["a"], file.name, { type: file.type }),
+        },
+        {
+          query: {
+            transcode,
+          },
+        },
+      );
+
+      if (response.error?.status === 401) {
+        updateStatus(`<code>${file.name}</code> Unauthorized. Please check your password.`);
+        return;
+      }
+
+      if (response.error) {
+        updateStatus(`<code>${file.name}</code> Upload initialization failed. Error: ${JSON.stringify(response.error.value)}`);
         return;
       }
     } catch (error) {
@@ -59,25 +67,37 @@ export async function uploadFiles(options: UploadOptions) {
 
     let lastByteIndex = 0;
 
-    formData.set("action", "append");
-
     while (true) {
       const filepart = file.slice(lastByteIndex, lastByteIndex + 4 * 1024 * 1024); // 4 MB chunks
       const choppedFile = new File([filepart], file.name, { type: file.type });
-      formData.set("file", choppedFile);
       if (filepart.size === 0) break;
       lastByteIndex += filepart.size;
 
       updateStatus(`<code>${file.name}</code> Uploading... (${Math.min((lastByteIndex / file.size) * 100, 100).toFixed(2)}%)`);
 
       try {
-        const response = await fetch(url.toString(), {
-          method: "POST",
-          body: formData,
-        });
+        const response = await api.upload.post(
+          {
+            password,
+            folder,
 
-        if (!response.ok) {
-          updateStatus(`<code>${file.name}</code> Upload failed. Response content: ` + (await response.text()));
+            action: "append",
+            file: choppedFile,
+          },
+          {
+            query: {
+              transcode,
+            },
+          },
+        );
+
+        if (response.error?.status === 401) {
+          updateStatus(`<code>${file.name}</code> Unauthorized. Please check your password.`);
+          return;
+        }
+
+        if (response.error) {
+          updateStatus(`<code>${file.name}</code> Upload failed. Error: ${response.error.value}`);
           return;
         }
       } catch (error) {
@@ -86,37 +106,45 @@ export async function uploadFiles(options: UploadOptions) {
       }
     }
 
-    formData.set("action", "done");
-    formData.set("file", new File(["a"], file.name, { type: file.type }));
-
     try {
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        body: formData,
-      });
+      const response = await api.upload.post(
+        {
+          password,
+          folder,
 
-      if (!response.ok) {
-        updateStatus(`<code>${file.name}</code> Finalizing upload failed. Response content: ` + (await response.text()));
+          action: "done",
+          file: new File(["a"], file.name, { type: file.type }),
+        },
+        {
+          query: {
+            transcode,
+          },
+        },
+      );
+
+      if (response.error?.status === 401) {
+        updateStatus(`<code>${file.name}</code> Unauthorized. Please check your password.`);
         return;
       }
 
-      const result: TFile = await response.json();
+      if (response.error) {
+        updateStatus(`<code>${file.name}</code> Finalizing upload failed. Error: ${response.error.value}`);
+        return;
+      }
+
+      const result = response.data;
 
       let filename = result.filename;
 
       updateStatus(
-        `<code>${file.name}</code> Upload completed. File URL: <a href="${import.meta.env.VITE_FILES_URL}/${
-          result.filename
-        }" target="_blank" rel="noopener noreferrer">File URL</a>`,
+        `<code>${file.name}</code> Upload completed. File URL: ${a(joinUrl(import.meta.env.VITE_FILES_URL, folder, filename), "File URL")}`,
       );
       if (result.jobId) {
         updateStatus(`<code>${file.name}</code> Transcoding in progress... (Job ID: ${result.jobId})`);
         filename = await pollTranscodeJob(result.jobId, file.name, updateStatus);
 
         updateStatus(
-          `<code>${file.name}</code> Upload and transcoding completed. File URL: <a href="${import.meta.env.VITE_FILES_URL}/${
-            result.filename
-          }" target="_blank" rel="noopener noreferrer">File URL</a>`,
+          `<code>${file.name}</code> Upload and transcoding completed. File URL: ${a(joinUrl(import.meta.env.VITE_FILES_URL, folder, filename || ""), "File URL")}`,
         );
       }
 
@@ -129,18 +157,16 @@ export async function uploadFiles(options: UploadOptions) {
 }
 
 async function pollTranscodeJob(jobId: string, fileName: string, updateStatus: (status: string) => void) {
-  const url = new URL(`/job/${jobId}`, import.meta.env.VITE_API_URL);
-
   while (true) {
     try {
-      const response = await fetch(url.toString());
+      const response = await api.job({ id: jobId }).get();
 
-      if (!response.ok) {
-        updateStatus(`${fileName} Failed to get transcoding status. Response content: ` + (await response.text()));
+      if (response.error) {
+        updateStatus(`${fileName} Failed to get transcoding status. Error: ${response.error.value}`);
         return;
       }
 
-      const result: TTranscodeJob = await response.json();
+      const result = response.data;
 
       if (result.status === "completed") {
         updateStatus(`${fileName} Transcoding completed.`);
